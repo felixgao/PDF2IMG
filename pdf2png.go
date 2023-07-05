@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/davidbyttow/govips/v2/vips"
 )
@@ -15,7 +16,7 @@ type ConvertOptions struct {
 }
 
 type ImageResult struct {
-	Image *vips.ImageRef
+	Image []byte
 	Index int
 }
 
@@ -58,62 +59,61 @@ func convertPDFToPNG(options ConvertOptions) ([]byte, error) {
 	zipBuffer := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(zipBuffer)
 
-	// // Create a Mutex to synchronize Goroutines access to vips library
-	// var vipsMutex sync.Mutex
-
-	// // Create a WaitGroup to synchronize Goroutines
-	// var wg sync.WaitGroup
-
-	// // Create a channel to receive the PNG images from Goroutines
-	// imageChan := make(chan *ImageResult)
-
+	// Start a Pipeline of Goroutines to convert PDF pages to PNG images
+	var wg sync.WaitGroup
+	imageChan := make(chan *ImageResult, len(options.PageIndices))
+	wg.Add(len(options.PageIndices))
 	// Iterate over the specified page indices
 	for _, pageIndex := range options.PageIndices {
-		// wg.Add(1)
-		// go func(pageIndex int, pdfFile []byte, resolution int) {
-		// defer wg.Done()
+		go func(pageIndex int, pdfFile []byte, resolution int) {
+			defer wg.Done()
 
-		// Load the PDF file using vips with options
-		pdfImportParams := vips.NewImportParams()
-		pdfImportParams.Density.Set(options.Resolution)
-		pdfImportParams.Page.Set(pageIndex)
-		pdfImportParams.NumPages.Set(1)
+			// Load the PDF file using vips with options
+			pdfImportParams := vips.NewImportParams()
+			pdfImportParams.Density.Set(options.Resolution)
+			pdfImportParams.Page.Set(pageIndex)
+			pdfImportParams.NumPages.Set(1)
 
-		// Render the PDF page to an image, lock the cirtical section for vips library access
-		// vipsMutex.Lock()
-		pageImage, err := vips.LoadImageFromBuffer(options.PDFFile, pdfImportParams)
-		if err != nil {
-			fmt.Printf("failed to render PDF page: %s\n", err.Error())
-			// vipsMutex.Unlock()
-			return nil, err
-		}
-		// vipsMutex.Unlock()
-		defer pageImage.Close()
+			// Render the PDF page to an image, lock the cirtical section for vips library access
+			pageImage, err := vips.LoadImageFromBuffer(options.PDFFile, pdfImportParams)
+			if err != nil {
+				fmt.Printf("failed to render PDF page: %s\n", err.Error())
+				return
+			}
+			defer pageImage.Close()
 
-		// result := ImageResult{
-		// 	Image: pageImage,
-		// 	Index: pageIndex,
-		// }
+			ep := vips.NewPngExportParams()
+			pngBuf, _, err := pageImage.ExportPng(ep)
+			if err != nil {
+				fmt.Printf("failed to convert image to PNG format: %s\n", err.Error())
+				return
+			}
 
-		// Send the result to the channel
-		// imageChan <- &result
-		// }(pageIndex, options.PDFFile, options.Resolution)
-		// }
+			result := ImageResult{
+				Image: pngBuf,
+				Index: pageIndex,
+			}
 
-		// start a Goroutine to write the PNG images to the zip file
-		// go func() {
-		// 	// Iterate over the received PNG images
-		// 	for result := range imageChan {
-		// 		// Access the page index and image from the ImageResult struct
-		// 		pageIndex := result.Index
-		// 		pageImage := result.Image
+			// Send the result to the channel
+			imageChan <- &result
+		}(pageIndex, options.PDFFile, options.Resolution)
+	}
 
-		ep := vips.NewPngExportParams()
-		pngBuf, _, err := pageImage.ExportPng(ep)
-		if err != nil {
-			fmt.Printf("failed to convert image to PNG format: %s\n", err.Error())
-			continue
-		}
+	// start a Goroutine to write the PNG images to the zip file
+	go func() {
+		// Wait for all Goroutines to finish
+		wg.Wait()
+		close(imageChan)
+
+	}()
+	// End of Pipeline
+
+	// Iterate over the received PNG images
+
+	for result := range imageChan {
+		// Access the page index and image from the ImageResult struct
+		pageIndex := result.Index
+		pageImage := result.Image
 
 		// Create a new PNG file in the zip archive
 		fileName := fmt.Sprintf("/page_%d.png", pageIndex)
@@ -124,16 +124,12 @@ func convertPDFToPNG(options ConvertOptions) ([]byte, error) {
 		}
 
 		// Write the PNG image data to the zip file
-		_, err = fileWriter.Write(pngBuf)
+		_, err = fileWriter.Write(pageImage)
 		if err != nil {
 			fmt.Printf("failed to write PNG data to zip: %s\n", err.Error())
 		}
 	}
 
-	// }()
-
-	// Wait for all Goroutines to finish
-	// wg.Wait()
 	err = zipWriter.Flush()
 	if err != nil {
 		return nil, fmt.Errorf("failed to flush zip writer: %s", err.Error())
