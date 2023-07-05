@@ -18,7 +18,7 @@ func parsePageIndices(indices string, totalPages int) ([]int, error) {
 		if idx, err := strconv.Atoi(part); err == nil {
 			// Validate the single page index
 			if idx < 1 || idx > totalPages {
-				return nil, fmt.Errorf("invalid page index: %d", idx)
+				return nil, fmt.Errorf("invalid page index: %d, from input: %s, max supported page: %d", idx, indices, totalPages)
 			}
 
 			resultMap[idx] = true
@@ -33,10 +33,10 @@ func parsePageIndices(indices string, totalPages int) ([]int, error) {
 				var err error
 				start, err = strconv.Atoi(strings.TrimSpace(rangeParts[0]))
 				if err != nil {
-					return nil, fmt.Errorf("invalid page range: %s", part)
+					return nil, fmt.Errorf("invalid start page range: %s", part)
 				}
 				if start < 1 || start > totalPages {
-					return nil, fmt.Errorf("invalid page range: %s", part)
+					return nil, fmt.Errorf("invalid start page range: %s", part)
 				}
 			}
 
@@ -45,10 +45,10 @@ func parsePageIndices(indices string, totalPages int) ([]int, error) {
 				var err error
 				end, err = strconv.Atoi(strings.TrimSpace(rangeParts[1]))
 				if err != nil {
-					return nil, fmt.Errorf("invalid page range: %s", part)
+					return nil, fmt.Errorf("invalid end page range: %s", part)
 				}
 				if end < 1 || end > totalPages {
-					return nil, fmt.Errorf("invalid page range: %s", part)
+					return nil, fmt.Errorf("invalid end page range: %s", part)
 				}
 			}
 

@@ -46,8 +46,6 @@ func convertPDFToPNG(options ConvertOptions) ([]byte, error) {
 		return nil, err
 	}
 
-	println("pageCount: ", pageCount)
-
 	// Validate the page indices
 	for _, pageIndex := range options.PageIndices {
 		if pageIndex < 1 || pageIndex > pageCount {

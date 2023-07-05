@@ -31,7 +31,7 @@ func convertHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Parse the page indices parameter
 	pageIndicesParam := r.FormValue("pages")
-	pageIndices, err := parsePageIndices(pageIndicesParam, 0)
+	pageIndices, err := parsePageIndices(pageIndicesParam, 50)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Invalid page indices: %s", err.Error()), http.StatusBadRequest)
 		return

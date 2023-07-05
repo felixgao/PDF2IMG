@@ -22,7 +22,13 @@ func TestParsePageIndices(t *testing.T) {
 			input:          "0",
 			totalPages:     10,
 			expectedOutput: []int{},
-			expectedError:  fmt.Errorf("invalid page index: 0"),
+			expectedError:  fmt.Errorf("invalid page index: 0, from input: 0, max supported page: 10"),
+		},
+		{
+			input:          "1,2",
+			totalPages:     10,
+			expectedOutput: []int{1, 2},
+			expectedError:  nil,
 		},
 		{
 			input:          "1,2,5",
