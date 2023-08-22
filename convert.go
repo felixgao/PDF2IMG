@@ -46,13 +46,18 @@ func convertHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Convert the specified pages to PNG and add them to the zip file
 
-	data, err := convertPDFToPNG(ConvertOptions{
+	exportOptions := ExportOptions{
+		Resolution: resolution,
+		Format:     "png",
+		Quality:    100,
+	}
+
+	data, err := convertPDFToImage(ConvertOptions{
 		PDFFile:     pdfContent,
 		PageIndices: pageIndices,
-		Resolution:  resolution,
-	})
+	}, exportOptions)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to convert pages %v to PNG: %s", pageIndices, err.Error()), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Failed to convert pages %v to Image (%v): %s", pageIndices, exportOptions, err.Error()), http.StatusInternalServerError)
 		return
 	}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -12,6 +13,11 @@ func main() {
 	vips.Startup(nil)
 	defer vips.Shutdown()
 
-	http.HandleFunc("/convert", convertHandler)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// defining router
+	mux := http.NewServeMux()
+	// starting server
+	fmt.Println("Server is running at 127.0.0.1:8080")
+
+	mux.HandleFunc("/convert", convertHandler)
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
