@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func parsePageIndices(indices string, totalPages int) ([]int, error) {
+func ParsePageIndices(indices string, totalPages int) ([]int, error) {
 	resultMap := make(map[int]bool)
 
 	parts := strings.Split(indices, ",")

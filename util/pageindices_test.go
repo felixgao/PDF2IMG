@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"fmt"
@@ -69,7 +69,7 @@ func TestParsePageIndices(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		output, err := parsePageIndices(tc.input, tc.totalPages)
+		output, err := ParsePageIndices(tc.input, tc.totalPages)
 
 		// Check if the returned error matches the expected error
 		if (err == nil && tc.expectedError != nil) || (err != nil && tc.expectedError == nil) || (err != nil && tc.expectedError != nil && err.Error() != tc.expectedError.Error()) {

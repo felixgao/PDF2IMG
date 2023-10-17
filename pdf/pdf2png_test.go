@@ -1,10 +1,11 @@
-package main
+package pdf
 
 import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 	"strings"
 	"testing"
 
@@ -39,7 +40,7 @@ func validateResult(compressedData []byte, expectedNumFiles int, exportOptions E
 		}
 
 		// Read the image file data
-		imgData, err := ioutil.ReadAll(imgFile)
+		imgData, err := io.ReadAll(imgFile)
 		if err != nil {
 			tb.Fatalf("failed to read %s file: %v", filetype, err)
 		}
@@ -56,7 +57,7 @@ func validateResult(compressedData []byte, expectedNumFiles int, exportOptions E
 func TestConvertPDFToImage(t *testing.T) {
 
 	// Read the PDF file
-	pdfData, err := ioutil.ReadFile("/Users/ggao/Downloads/ATT00001.pdf")
+	pdfData, err := os.ReadFile("/Users/ggao/Downloads/ATT00001.pdf")
 	if err != nil {
 		t.Fatalf("failed to read PDF file: %v", err)
 	}
@@ -74,14 +75,14 @@ func TestConvertPDFToImage(t *testing.T) {
 	}
 
 	// Convert PDF to PNG
-	compressedData, err := convertPDFToImage(options, exportOptions)
+	compressedData, err := ConvertPDFToImage(options, exportOptions)
 	if err != nil {
 		t.Fatalf("failed to convert PDF to PNG: %v", err)
 	}
 	// Validate the result
 	validateResult(compressedData, len(options.PageIndices), exportOptions, t)
 
-	ioutil.WriteFile("/Users/ggao/Downloads/ATT00001.zip", compressedData, 0777)
+	os.WriteFile("/Users/ggao/Downloads/ATT00001.zip", compressedData, 0777)
 
 }
 
@@ -90,10 +91,39 @@ type FileInput struct {
 	Indices []int
 }
 
-
 func setup() {
 	vips.LoggingSettings(nil, vips.LogLevelInfo)
 	vips.Startup(nil)
+}
+
+func BenchmarkGetPDFPageCount(b *testing.B) {
+	inputTable := []FileInput{
+		{Name: "/Users/ggao/Downloads/ATT00001.pdf", Indices: []int{1, 2, 3, 4}},
+		{Name: "/Users/ggao/Downloads/ATT00001.pdf", Indices: []int{1, 2, 3, 4}},
+	}
+	fmt.Println("Setup")
+	setup()
+	fmt.Println("Setup Done")
+	fmt.Println("Start Benchmarking")
+
+	for _, input := range inputTable {
+		pdfData, err := os.ReadFile(input.Name)
+		if err != nil {
+			b.Fatalf("failed to read PDF file: %v", err)
+		}
+
+		b.RunParallel(func(pb *testing.PB) {
+			b.ReportAllocs()
+			b.ResetTimer()
+			// Convert PDF to Image
+			for pb.Next() {
+				_, err := GetPDFPageCount(pdfData)
+				if err != nil {
+					b.Fatalf("failed to get PDF page count: %v", err)
+				}
+			}
+		})
+	}
 }
 
 func BenchmarkConvertPDFToImage(b *testing.B) {
@@ -119,7 +149,7 @@ func BenchmarkConvertPDFToImage(b *testing.B) {
 	fmt.Println("Start Benchmarking")
 
 	for _, input := range inputTable {
-		pdfData, err := ioutil.ReadFile(input.Name)
+		pdfData, err := os.ReadFile(input.Name)
 		if err != nil {
 			b.Fatalf("failed to read PDF file: %v", err)
 		}
@@ -140,7 +170,7 @@ func BenchmarkConvertPDFToImage(b *testing.B) {
 			b.ResetTimer()
 			// Convert PDF to Image
 			for pb.Next() {
-				compressedData, _ := convertPDFToImage(options, exportOptions)
+				compressedData, _ := ConvertPDFToImage(options, exportOptions)
 				validateResult(compressedData, len(options.PageIndices), exportOptions, b)
 			}
 		})

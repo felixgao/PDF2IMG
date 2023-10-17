@@ -1,4 +1,4 @@
-package main
+package pdf
 
 import (
 	"archive/zip"
@@ -26,30 +26,30 @@ type ImageResult struct {
 	Extension string
 }
 
-var imageTypeMap = map[vips.ImageType]string{
+var ImageTypeMap = map[vips.ImageType]string{
 	vips.ImageTypeJPEG: "jpg",
 	vips.ImageTypePNG:  "png",
 	vips.ImageTypeTIFF: "tiff",
 }
 
-var imageExtensionMap = map[string]vips.ImageType{
+var ImageExtensionMap = map[string]vips.ImageType{
 	"jpg":  vips.ImageTypeJPEG,
 	"png":  vips.ImageTypePNG,
 	"tiff": vips.ImageTypeTIFF,
 }
 
 func export(image *vips.ImageRef, exportOption ExportOptions) (string, []byte, *vips.ImageMetadata, error) {
-	var format = imageExtensionMap[exportOption.Format]
+	var format = ImageExtensionMap[exportOption.Format]
 
 	switch format {
 	case vips.ImageTypePNG:
 		ep := vips.NewPngExportParams()
-		ext := imageTypeMap[format]
+		ext := ImageTypeMap[format]
 		imgBytes, imgMeta, err := image.ExportPng(ep)
 		return ext, imgBytes, imgMeta, err
 	case vips.ImageTypeTIFF:
 		ep := vips.NewTiffExportParams()
-		ext := imageTypeMap[format]
+		ext := ImageTypeMap[format]
 		if exportOption.Quality > 0 {
 			ep.Compression = vips.TiffCompressionLzw
 			ep.Quality = exportOption.Quality
@@ -57,7 +57,7 @@ func export(image *vips.ImageRef, exportOption ExportOptions) (string, []byte, *
 		imgBytes, imgMeta, err := image.ExportTiff(ep)
 		return ext, imgBytes, imgMeta, err
 	default:
-		ext := imageTypeMap[vips.ImageTypeJPEG]
+		ext := ImageTypeMap[vips.ImageTypeJPEG]
 		ep := vips.NewJpegExportParams()
 		if exportOption.Quality > 0 {
 			ep.Quality = exportOption.Quality
@@ -67,7 +67,7 @@ func export(image *vips.ImageRef, exportOption ExportOptions) (string, []byte, *
 	}
 }
 
-func getPDFPageCount(pdfFile []byte) (int, error) {
+func GetPDFPageCount(pdfFile []byte) (int, error) {
 	// Load the PDF file using vips
 	pdfImportParams := vips.NewImportParams()
 	pdfImportParams.Density.Set(35)
@@ -82,12 +82,12 @@ func getPDFPageCount(pdfFile []byte) (int, error) {
 	return tmp.Pages(), nil
 }
 
-func convertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOptions) ([]byte, error) {
+func ConvertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOptions) ([]byte, error) {
 
 	// Load the PDF file using vips
 	// Get total pages of document
 
-	pageCount, err := getPDFPageCount(convertOptions.PDFFile)
+	pageCount, err := GetPDFPageCount(convertOptions.PDFFile)
 	if err != nil {
 		// unable to load PDF file to get the page count
 		return nil, err
