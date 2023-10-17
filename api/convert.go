@@ -159,8 +159,8 @@ func convertHandler(c *gin.Context) {
 	exportParam := c.PostForm("export")
 	exportFileType, ok := pdf.ImageExtensionMap[exportParam]
 	if !ok {
-		exportFileType = pdf.ImageExtensionMap["png"]
-		log.Println("export is not set, using default value png")
+		exportFileType = pdf.ImageExtensionMap["jpg"]
+		log.Println("export is not set, using default value jpg")
 	}
 
 	// Log the export options and page indices
@@ -168,7 +168,7 @@ func convertHandler(c *gin.Context) {
 	// Convert the specified pages to PNG and add them to the zip file
 	exportOptions := pdf.ExportOptions{
 		Resolution: resolution,
-		Format:     "png",
+		Format:     exportParam,
 		Quality:    100,
 	}
 

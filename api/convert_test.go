@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -20,12 +21,12 @@ func TestConvertRoute(t *testing.T) {
 	// Create a request body with pdf file and form params
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
-	writer.WriteField("pages", "1-3")
+	writer.WriteField("pages", "1-3,5,7,8")
 	writer.WriteField("resolution", "150")
 	writer.WriteField("export", "png")
 
-	part, _ := writer.CreateFormFile("file[]", "ATT00001.pdf")
-	pdfContent, err := os.ReadFile("/Users/ggao/Downloads/ATT00001.pdf")
+	part, _ := writer.CreateFormFile("file[]", "fidelity.pdf")
+	pdfContent, err := os.ReadFile("/Users/ggao/Desktop/fidelity.pdf")
 	if err != nil {
 		t.Fatalf("failed to read PDF file: %v", err)
 	}
@@ -40,18 +41,23 @@ func TestConvertRoute(t *testing.T) {
 
 	// Check the test results
 	assert.Equal(t, http.StatusOK, w.Code)
+	if w.Code != http.StatusOK {
+		t.Fatal("Error Message: ", w.Body.String())
+	}
 	contentType := w.Header().Get("Content-Type")
 	assert.Equal(t, "application/octet-stream", contentType)
 	fileName := w.Header().Get("Content-Disposition")
-	assert.Equal(t, "attachment; filename=ATT00001.zip", fileName)
+	assert.Equal(t, "attachment; filename=fidelity.zip", fileName)
 	// Read response body
 	zipBytes, err := io.ReadAll(w.Body)
 	if err != nil {
 		t.Fatalf("failed to read response body: %v", err)
 	}
+	log.Printf("zipBytes size: %v", len(zipBytes))
 	// Check if the output is not empty
 	if len(zipBytes) == 0 {
 		t.Fatal("empty compressed output")
 	}
-
+	// write the zip file to disk for manual inspection
+	os.WriteFile("/Users/ggao/Downloads/fidelity.zip", zipBytes, 0644)
 }

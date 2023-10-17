@@ -84,22 +84,6 @@ func GetPDFPageCount(pdfFile []byte) (int, error) {
 
 func ConvertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOptions) ([]byte, error) {
 
-	// Load the PDF file using vips
-	// Get total pages of document
-
-	pageCount, err := GetPDFPageCount(convertOptions.PDFFile)
-	if err != nil {
-		// unable to load PDF file to get the page count
-		return nil, err
-	}
-
-	// Validate the page indices
-	for _, pageIndex := range convertOptions.PageIndices {
-		if pageIndex < 1 || pageIndex > pageCount {
-			return nil, fmt.Errorf("invalid page index: %d", pageIndex)
-		}
-	}
-
 	// Create a new zip buffer
 	zipBuffer := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(zipBuffer)
@@ -117,7 +101,8 @@ func ConvertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOption
 			// Load the PDF file using vips with options
 			pdfImportParams := vips.NewImportParams()
 			pdfImportParams.Density.Set(exportOptions.Resolution)
-			pdfImportParams.Page.Set(pageIndex)
+			// the Page parameter is 0-based
+			pdfImportParams.Page.Set(pageIndex - 1)
 			pdfImportParams.NumPages.Set(1)
 
 			// Render the PDF page to an image, lock the cirtical section for vips library access
@@ -177,7 +162,7 @@ func ConvertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOption
 		}
 	}
 
-	err = zipWriter.Flush()
+	err := zipWriter.Flush()
 	if err != nil {
 		return nil, fmt.Errorf("failed to flush zip writer: %s", err.Error())
 	}
