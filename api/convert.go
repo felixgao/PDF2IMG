@@ -8,9 +8,12 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 
 	"github.com/felixgao/pdf_to_png/pdf"
 	"github.com/felixgao/pdf_to_png/util"
@@ -101,8 +104,15 @@ func getRequestBody(c *gin.Context) []byte {
 // @Success 200
 // @Router /convert [post]
 func convertHandler(c *gin.Context) {
+	// Setup tracing and metrics
 	var tracer = otel.Tracer("pdf2img")
-	_, childSpan := tracer.Start(c.Request.Context(), "parameter-check-span")
+	var meter = otel.Meter("pdf2img")
+	ctx, childSpan := tracer.Start(c.Request.Context(), "parameter-check-span")
+	duration, _ := meter.Int64Histogram("request_duration")
+	counter, _ := meter.Int64Counter("request_count")
+	startTime := time.Now()
+	opts := []attribute.KeyValue{}
+
 	// Multipart form
 	form, _ := c.MultipartForm()
 	files := form.File["file[]"]
@@ -111,6 +121,8 @@ func convertHandler(c *gin.Context) {
 	// Get the uploaded PDF file from the form
 	f, openErr := pdf_file.Open()
 	if openErr != nil {
+		opts = append(opts, attribute.Key("ConvertError").String("PDF Open Error"))
+		counter.Add(ctx, 1, metric.WithAttributes(opts...))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Failed to open PDF file from form",
 		})
@@ -119,6 +131,8 @@ func convertHandler(c *gin.Context) {
 	defer f.Close()
 	file_type := DetectContentType(c, f)
 	if file_type != "application/pdf" {
+		opts = append(opts, attribute.Key("ConvertError").String("Wrong Content Type"))
+		counter.Add(ctx, 1, metric.WithAttributes(opts...))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Content-Type is not a application/pdf",
 		})
@@ -127,6 +141,8 @@ func convertHandler(c *gin.Context) {
 	// Read the PDF content into memory
 	pdfContent, err := io.ReadAll(f)
 	if err != nil {
+		opts = append(opts, attribute.Key("ConvertError").String("Encrypted PDF"))
+		counter.Add(ctx, 1, metric.WithAttributes(opts...))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Failed to read PDF content, check the file is not encrypted",
 		})
@@ -135,6 +151,8 @@ func convertHandler(c *gin.Context) {
 
 	pageCount, err := pdf.GetPDFPageCount(pdfContent)
 	if err != nil {
+		opts = append(opts, attribute.Key("ConvertError").String("Missing Page Count"))
+		counter.Add(ctx, 1, metric.WithAttributes(opts...))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": "Failed to get PDF page count",
 		})
@@ -146,6 +164,8 @@ func convertHandler(c *gin.Context) {
 	// TODO: get the total page of the PDF file
 	pageIndices, err := util.ParsePageIndices(pageIndicesParam, pageCount)
 	if err != nil {
+		opts = append(opts, attribute.Key("ConvertError").String("Invalid PDF Page Indices"))
+		counter.Add(ctx, 1, metric.WithAttributes(opts...))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"message": fmt.Sprintf("Invalid page indices(%s): %s", pageIndicesParam, err.Error()),
 		})
@@ -168,7 +188,7 @@ func convertHandler(c *gin.Context) {
 	}
 
 	// Log the export options and page indices
-	log.Printf("Export Type: %v; Page Indices: %v", pdf.ImageTypeMap[exportFileType], pageIndices)
+	log.Printf("Export Type: %v; Page Indices: %v; Resolution: %v", pdf.ImageTypeMap[exportFileType], pageIndices, resolution)
 	// Convert the specified pages to PNG and add them to the zip file
 	exportOptions := pdf.ExportOptions{
 		Resolution: resolution,
@@ -190,9 +210,15 @@ func convertHandler(c *gin.Context) {
 	}
 	childSpan.End()
 
+	opts = append(opts, attribute.Key("ConvertSuccess").String("true"))
+	duration.Record(ctx, time.Since(startTime).Milliseconds(), metric.WithAttributes(opts...))
+	counter.Add(ctx, 1, metric.WithAttributes(opts...))
 	// write the zip file to the response
 	fileName := util.FileNameWithoutExt(pdf_file.Filename)
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s.zip", fileName))
 	c.Data(http.StatusOK, "application/octet-stream", byteFile)
 
 }
+
+// TODO: use find_trim to reduce the size of the image
+// https://www.libvips.org/API/current/libvips-arithmetic.html#vips-find-trim

@@ -32,9 +32,9 @@ services:
     volumes:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
+      - "9090:9090"    # Prometheus UI
 
-  collector:
+  otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     restart: always
     command: [ "--config=/etc/otel-collector-config.yml" ]

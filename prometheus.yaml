@@ -1,6 +1,7 @@
 scrape_configs:
+  # The job name should match the name of the service in docker-compose.yaml
   - job_name: 'otel-collector'
-    scrape_interval: 10s
+    scrape_interval: 5s
     static_configs:
       - targets: ['otel-collector:8889']
       - targets: ['otel-collector:8888']
