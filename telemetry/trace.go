@@ -13,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/credentials"
 )
 
 // ----------------------------------------
@@ -59,11 +60,23 @@ func getTraceClient() (client otlptrace.Client, err error) {
 	if v := os.Getenv(otlpTracesProtocol); v != "" {
 		protocol = v
 	}
+
+	endpoint := "0.0.0.0:4317"
+	if v := os.Getenv(otlpEndpoint); v != "" {
+		endpoint = v
+	}
+
 	switch protocol {
 	case otlpProtocolHTTP:
-		client = otlptracehttp.NewClient()
+		// TODO: figure out how to do secure options
+		client = otlptracehttp.NewClient(otlptracehttp.WithEndpoint(endpoint))
 	case otlpProtocolGrpc:
-		client = otlptracegrpc.NewClient()
+		secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+		if v := os.Getenv("INSECURE_MODE"); v != "" {
+			secureOption = otlptracegrpc.WithInsecure()
+		}
+		client = otlptracegrpc.NewClient(secureOption,
+			otlptracegrpc.WithEndpoint(endpoint))
 	default:
 		err = fmt.Errorf("unknown or unsupported OLTP protocol: %s. No traces will be exported", protocol)
 	}

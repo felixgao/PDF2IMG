@@ -1,15 +1,33 @@
 package telemetry
 
 import (
+	"context"
 	"os"
 
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 
 	"github.com/rs/zerolog/log"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
+
+type BaseTelemetry struct {
+	c             context.Context
+	traceProvider *sdktrace.TracerProvider
+	metric        *sdkmetric.MeterProvider
+}
+
+func (bt *BaseTelemetry) Shutdown() {
+	if bt.traceProvider != nil {
+		_ = bt.traceProvider.Shutdown(bt.c)
+	}
+	if bt.metric != nil {
+		_ = bt.metric.Shutdown(bt.c)
+	}
+}
 
 func SetupFromEnvs() {
 	newTraceProvider()

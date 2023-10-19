@@ -20,6 +20,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 
 	apis "github.com/felixgao/pdf_to_png/api"
+	"github.com/felixgao/pdf_to_png/telemetry"
 )
 
 var (
@@ -109,9 +110,11 @@ func setupWebServer() {
 }
 
 func main() {
-	// initializing tracer
-	cleanup := initTracer()
-	defer cleanup(context.Background())
+	// initializing the tracer and metric
+	// cleanup := initTracer()
+	// defer cleanup(context.Background())
+	telemetry.SetupFromEnvs()
+	defer telemetry.Cleanup()
 
 	r := gin.Default()
 	r.Use(otelgin.Middleware("otel-otlp-go-service"))

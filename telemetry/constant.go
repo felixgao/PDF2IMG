@@ -9,7 +9,7 @@ const (
 	// e.g. http://localhost:4318 for an insecure local collector
 	otlpEndpoint = "OTEL_EXPORTER_OTLP_ENDPOINT"
 
-	// defines the protocol used to push to oltp collector. both http/protobuf (default) and grpc are supported.
+	// defines the protocol used to push to oltp collector. both http/protobuf and grpc (default) are supported.
 	otlpProtocol = "OTEL_EXPORTER_OTLP_PROTOCOL"
 
 	// allows defining a different oltp collector for traces

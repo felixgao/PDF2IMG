@@ -1,33 +1,42 @@
 version: '3.9'
 services:
-  http:
-      image: golang:1.17
-      volumes:
-        - $GOPATH/pkg/mod:/go/pkg/mod
-        - ./:/src/go
-      working_dir: /src/go/
-      environment:
-        - PORT=8080
-      command: go run main.go
-      ports:
-        - 8080:8080
+  # http:
+  #     image: golang:1.20
+  #     volumes:
+  #       - $GOPATH/pkg/mod:/go/pkg/mod
+  #       - ./:/src/go
+  #     working_dir: /src/go/
+  #     environment:
+  #       - PORT=8080
+  #     command: go run main.go
+  #     ports:
+  #       - 8080:8080
   zipkin:
     image: openzipkin/zipkin-slim
+    restart: always
     ports:
       # - "9410:9410"
       - "9411:9411"   
-    # network_mode: host 
   jaeger:
     image: jaegertracing/all-in-one
+    restart: always
     # environment:
     #   COLLECTOR_ZIPKIN_HOST_PORT: 9412
     ports:
       - "16686:16686"   # HTTP UI
       - "14268"
       - "14250"
-    # network_mode: host
+  prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
   collector:
     image: otel/opentelemetry-collector-contrib:latest
+    restart: always
     command: [ "--config=/etc/otel-collector-config.yml" ]
     volumes:
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
@@ -45,4 +54,4 @@ services:
     depends_on:
       - jaeger
       - zipkin
-    # network_mode: host
+      - prometheus

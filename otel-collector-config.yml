@@ -8,8 +8,20 @@ receivers:
 exporters:
   zipkin:
     endpoint: "http://zipkin:9411/api/v2/spans"
+
   logging:
     verbosity: detailed
+
+  otlp:
+  # The name of the endpoint should be the name of the service in docker-compose.yaml
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    const_labels:
+      label1: value1
 
 processors:
   batch:
@@ -25,13 +37,15 @@ service:
     logs:
       level: "debug"
   pipelines:
+    # steps Receivers —> Processors —> Exporters
     traces:
-      receivers: [otlp, zipkin]
-      exporters: [zipkin, logging]
+      receivers: [otlp]
       processors: [batch]
+      exporters: [zipkin, logging, otlp]
     metrics:
       receivers: [otlp]
-      exporters: [logging]
+      processors: [batch]
+      exporters: [logging, prometheus]
     logs:
       receivers: [ otlp ]
       processors: [ batch ]
