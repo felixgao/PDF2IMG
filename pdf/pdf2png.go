@@ -139,7 +139,7 @@ func ConvertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOption
 	}()
 	// End of Pipeline
 
-	// Iterate over the received PNG images
+	// Iterate over the received images
 
 	for result := range imageChan {
 		// Access the page index and image from the ImageResult struct
@@ -147,7 +147,7 @@ func ConvertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOption
 		pageImage := result.Image
 		pageExtension := result.Extension
 
-		// Create a new PNG file in the zip archive
+		// Create a new file in the zip archive
 		fileName := fmt.Sprintf("/page_%d.%s", pageIndex, pageExtension)
 		fileWriter, err := zipWriter.Create(fileName)
 		if err != nil {
@@ -155,7 +155,7 @@ func ConvertPDFToImage(convertOptions ConvertOptions, exportOptions ExportOption
 			continue
 		}
 
-		// Write the PNG image data to the zip file
+		// Write the image data to the zip file
 		_, err = fileWriter.Write(pageImage)
 		if err != nil {
 			fmt.Printf("failed to write %s data to zip: %s\n", pageExtension, err.Error())

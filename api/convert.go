@@ -10,11 +10,13 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel"
 
 	"github.com/felixgao/pdf_to_png/pdf"
 	"github.com/felixgao/pdf_to_png/util"
 )
 
+// TODO: add the end points to a router group /api
 func RegisterConvertHandlers(handler *gin.Engine) {
 	handler.POST("/convert", convertHandler)
 	handler.POST("/api/convert", convertHandler)
@@ -99,6 +101,8 @@ func getRequestBody(c *gin.Context) []byte {
 // @Success 200
 // @Router /convert [post]
 func convertHandler(c *gin.Context) {
+	var tracer = otel.Tracer("pdf2img")
+	_, childSpan := tracer.Start(c.Request.Context(), "parameter-check-span")
 	// Multipart form
 	form, _ := c.MultipartForm()
 	files := form.File["file[]"]
@@ -171,7 +175,9 @@ func convertHandler(c *gin.Context) {
 		Format:     exportParam,
 		Quality:    100,
 	}
+	childSpan.End()
 
+	_, childSpan = tracer.Start(c.Request.Context(), "conversion-span")
 	byteFile, err := pdf.ConvertPDFToImage(pdf.ConvertOptions{
 		PDFFile:     pdfContent,
 		PageIndices: pageIndices,
@@ -182,6 +188,7 @@ func convertHandler(c *gin.Context) {
 		})
 		return
 	}
+	childSpan.End()
 
 	// write the zip file to the response
 	fileName := util.FileNameWithoutExt(pdf_file.Filename)

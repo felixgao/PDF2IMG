@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"runtime"
 
 	"github.com/davidbyttow/govips/v2/vips"
 	"github.com/gin-contrib/gzip"
@@ -23,8 +24,8 @@ import (
 
 var (
 	serviceName = os.Getenv("SERVICE_NAME")
-	// collectorURL = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-	insecure = os.Getenv("INSECURE_MODE")
+	endpoint    = os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+	insecure    = os.Getenv("INSECURE_MODE")
 )
 
 func initTracer() func(context.Context) error {
@@ -34,11 +35,15 @@ func initTracer() func(context.Context) error {
 		secureOption = otlptracegrpc.WithInsecure()
 	}
 
+	if endpoint == "" {
+		endpoint = "0.0.0.0:4317"
+	}
+
 	exporter, err := otlptrace.New(
 		context.Background(),
 		otlptracegrpc.NewClient(
 			secureOption,
-			otlptracegrpc.WithEndpoint("0.0.0.0:4317"),
+			otlptracegrpc.WithEndpoint(endpoint),
 		),
 	)
 
@@ -49,13 +54,14 @@ func initTracer() func(context.Context) error {
 		context.Background(),
 		resource.WithAttributes(
 			attribute.String("service.name", serviceName),
+			attribute.String("host.arch", runtime.GOARCH),
 			attribute.String("application", "PDF2IMG-app"),
 		),
 	)
 	if err != nil {
 		log.Fatal("Could not set resources: ", err)
 	}
-
+	// set up the global trace provider
 	otel.SetTracerProvider(
 		sdktrace.NewTracerProvider(
 			sdktrace.WithSampler(sdktrace.AlwaysSample()),
@@ -64,6 +70,8 @@ func initTracer() func(context.Context) error {
 			sdktrace.WithResource(resources),
 		),
 	)
+	// set up the global metrics provider
+
 	return exporter.Shutdown
 }
 
@@ -93,6 +101,7 @@ func setupWebServer() {
 
 	// setup end points
 	apis.RegisterHealthCheckHandlers(r)
+	apis.RegisterConvertHandlers(r)
 
 	// start the server
 	_ = r.Run(":8080")

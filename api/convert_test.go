@@ -21,12 +21,12 @@ func TestConvertRoute(t *testing.T) {
 	// Create a request body with pdf file and form params
 	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
-	writer.WriteField("pages", "1-3,5,7,8")
+	writer.WriteField("pages", "1-3,5,7,8,10,11,12,13,14,15,16,17,18,19,20,31")
 	writer.WriteField("resolution", "150")
 	writer.WriteField("export", "png")
 
 	part, _ := writer.CreateFormFile("file[]", "fidelity.pdf")
-	pdfContent, err := os.ReadFile("/Users/ggao/Desktop/fidelity.pdf")
+	pdfContent, err := os.ReadFile("/Users/ggao/Downloads/Document Table Forms Recognition.pdf")
 	if err != nil {
 		t.Fatalf("failed to read PDF file: %v", err)
 	}
